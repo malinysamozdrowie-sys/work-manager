@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Zarządzania Pracą</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        :root { --primary: #2563eb; --primary-dark: #1d4ed8; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; --gray-100: #f3f4f6; --gray-200: #e5e7eb; --gray-300: #d1d5db; --gray-700: #374151; --gray-800: #1f2937; }
+        body { background: var(--gray-100); min-height: 100vh; }
+        #login-screen { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .login-box { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); width: 100%; max-width: 400px; }
+        .login-box h1 { text-align: center; color: var(--gray-800); margin-bottom: 1.5rem; font-size: 1.5rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: var(--gray-700); font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 0.75rem; border: 1px solid var(--gray-300); border-radius: 6px; font-size: 1rem; }
+        .form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        .btn { width: 100%; padding: 0.75rem; border: none; border-radius: 6px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        #app-screen { display: none; }
+        .header { background: white; padding: 1rem 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { color: var(--gray-800); font-size: 1.25rem; }
+        .user-info { display: flex; align-items: center; gap: 1rem; }
+        .logout-btn { background: var(--gray-200); color: var(--gray-700); padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; }
+        .main-content { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+        .brygadzista-panel { display: none; }
+        .panel-section { background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .panel-section h2 { color: var(--gray-800); margin-bottom: 1rem; font-size: 1.1rem; }
+        .pracownicy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+        .pracownik-card { border: 1px solid var(--gray-200); padding: 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .pracownik-card:hover { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1); }
+        .pracownik-card.selected { border-color: var(--primary); background: #eff6ff; }
+        .pracownik-card h3 { color: var(--gray-800); margin-bottom: 0.25rem; }
+        .pracownik-card p { color: var(--gray-700); font-size: 0.875rem; }
+        .kalendarz-container { margin-top: 1rem; }
+        .kalendarz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .kalendarz-nav { display: flex; gap: 0.5rem; }
+        .kalendarz-nav button { padding: 0.5rem 1rem; border: 1px solid var(--gray-300); background: white; border-radius: 4px; cursor: pointer; }
+        .kalendarz-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: var(--gray-200); }
+        .kalendarz-dzien { background: white; padding: 0.5rem; min-height: 80px; cursor: pointer; }
+        .kalendarz-dzien:hover { background: #f9fafb; }
+        .kalendarz-dzien.wpis { background: #d1fae5; }
+        .dzien-numer { font-weight: bold; color: var(--gray-800); margin-bottom: 0.25rem; }
+        .dzien-godziny { font-size: 0.875rem; color: var(--primary); font-weight: 500; }
+        .dzien-notatka { font-size: 0.75rem; color: var(--gray-700); margin-top: 0.25rem; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 1.5rem; border-radius: 8px; width: 100%; max-width: 400px; }
+        .modal-content h3 { margin-bottom: 1rem; color: var(--gray-800); }
+        .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .modal-actions .btn { flex: 1; }
+        .ksiegowa-panel { display: none; }
+        .raport-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--gray-200); }
+        th { background: var(--gray-100); font-weight: 600; color: var(--gray-700); }
+        tr:hover { background: #f9fafb; }
+        .status-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+        .status-oczekujacy { background: #fef3c7; color: #92400e; }
+        .status-zatwierdzony { background: #d1fae5; color: #065f46; }
+        .filters { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .filters select, .filters button { padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: 6px; background: white; }
+        .suma-box { background: var(--gray-100); padding: 1rem; border-radius: 8px; margin-top: 1rem; }
+        .suma-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 0.5rem; }
+        .suma-item { text-align: center; }
+        .suma-item .label { font-size: 0.75rem; color: var(--gray-700); }
+        .suma-item .value { font-size: 1.25rem; font-weight: bold; color: var(--gray-800); }
+        .notification { position: fixed; top: 1rem; right: 1rem; padding: 1rem 1.5rem; border-radius: 8px; color: white; font-weight: 500; z-index: 1000; animation: slideIn 0.3s ease; }
+        .notification.success { background: var(--success); }
+        .notification.error { background: var(--danger); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div id="login-screen">
+        <div class="login-box">
+            <h1>🔐 System Zarządzania Pracą</h1>
+            <form id="login-form">
+                <div class="form-group"><label>Login</label><input type="text" id="login-input" required></div>
+                <div class="form-group"><label>Hasło</label><input type="password" id="haslo-input" required></div>
+                <button type="submit" class="btn btn-primary">Zaloguj się</button>
+            </form>
+            <p style="margin-top:1rem;text-align:center;color:var(--gray-700);font-size:0.875rem;">
+                Brygadzista: <strong>brygadzista</strong> / <strong>brygadzista123</strong><br>
+                Księgowa: <strong>ksiegowa</strong> / <strong>ksiegowa123</strong>
+            </p>
+        </div>
+    </div>
+    
+    <div id="app-screen">
+        <header class="header">
+            <h1>📊 System Zarządzania Pracą</h1>
+            <div class="user-info">
+                <span id="user-name"></span>
+                <span id="user-role" style="padding:0.25rem 0.75rem;background:var(--gray-100);border-radius:4px;font-size:0.875rem;"></span>
+                <button class="logout-btn" onclick="wyloguj()">Wyloguj</button>
+            </div>
+        </header>
+        
+        <main class="main-content">
+            <div id="brygadzista-panel" class="brygadzista-panel">
+                <div class="panel-section">
+                    <h2>👷 Wybierz Pracownika</h2>
+                    <div id="pracownicy-list" class="pracownicy-grid"></div>
+                    <div style="margin-top:1rem;"><button class="btn btn-primary" onclick="pokazModalDodajPracownika()">+ Dodaj pracownika</button></div>
+                </div>
+                
+                <div class="panel-section" id="kalendarz-section" style="display:none;">
+                    <h2>📅 Kalendarz - <span id="wybrany-pracownik"></span></h2>
+                    <div class="kalendarz-container">
+                        <div class="kalendarz-header">
+                            <h3 id="kalendarz-miesiac">Styczeń 2024</h3>
+                            <div class="kalendarz-nav">
+                                <button onclick="zmienMiesiac(-1)">◀ Poprzedni</button>
+                                <button onclick="zmienMiesiac(1)">Następny ▶</button>
+                            </div>
+                        </div>
+                        <div class="kalendarz-grid" id="kalendarz-grid"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="ksiegowa-panel" class="ksiegowa-panel">
+                <div class="panel-section">
+                    <h2>📊 Raport Miesięczny</h2>
+                    <div class="filters">
+                        <select id="raport-miesiac">
+                            <option value="0">Styczeń</option><option value="1">Luty</option><option value="2">Marzec</option>
+                            <option value="3">Kwiecień</option><option value="4">Maj</option><option value="5">Czerwiec</option>
+                            <option value="6">Lipiec</option><option value="7">Sierpień</option><option value="8">Wrzesień</option>
+                            <option value="9">Październik</option><option value="10">Listopad</option><option value="11">Grudzień</option>
+                        </select>
+                        <select id="raport-rok"></select>
+                        <button class="btn btn-primary" onclick="pobierzRaport()">Pobierz raport</button>
+                        <button class="btn btn-success" onclick="eksportCSV()">📥 Eksport CSV</button>
+                        <button class="btn btn-success" onclick="eksportExcel()">📥 Eksport Excel</button>
+                    </div>
+                    
+                    <div id="raport-status" style="margin-bottom:1rem;">
+                        <span class="status-badge status-oczekujacy">Oczekuje na zatwierdzenie</span>
+                    </div>
+                    
+                    <div class="raport-container">
+                        <table id="raport-table">
+                            <thead><tr><th>Lp</th><th>Pracownik</th><th>Stanowisko</th><th>Godziny</th><th>Stawka</th><th>BRUTTO</th><th>Składki</th><th>NETTO</th></tr></thead>
+                            <tbody id="raport-tbody"><tr><td colspan="8" style="text-align:center;">Wybierz miesiąc i pobierz raport</td></tr></tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="suma-box" id="suma-box" style="display:none;">
+                        <h3>Podsumowanie</h3>
+                        <div class="suma-grid">
+                            <div class="suma-item"><div class="label">Suma godzin</div><div class="value" id="suma-godzin">0</div></div>
+                            <div class="suma-item"><div class="label">Suma BRUTTO</div><div class="value" id="suma-brutto">0 zł</div></div>
+                            <div class="suma-item"><div class="label">Suma składek</div><div class="value" id="suma-skladki">0 zł</div></div>
+                            <div class="suma-item"><div class="label">Suma NETTO</div><div class="value" id="suma-netto">0 zł</div></div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top:1rem;display:flex;gap:1rem;">
+                        <button class="btn btn-success" id="zatwierdz-btn" onclick="zatwierdzMiesiac()">✓ Zatwierdź miesiąc</button>
+                        <button class="btn btn-danger" id="cofnij-btn" onclick="cofnijZatwierdzenie()">✗ Cofnij zatwierdzenie</button>
+                    </div>
+                </div>
+                
+                <div class="panel-section">
+                    <h2>💰 Zarządzanie Stawkami</h2>
+                    <table id="stawki-table">
+                        <thead><tr><th>Pracownik</th><th>Stanowisko</th><th>Stawka (zł/h)</th><th>Akcja</th></tr></thead>
+                        <tbody id="stawki-tbody"><tr><td colspan="4" style="text-align:center;">Ładowanie...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="modal-pracownik" class="modal">
+        <div class="modal-content">
+            <h3>Dodaj Pracownika</h3>
+            <form id="form-dodaj-pracownika">
+                <div class="form-group"><label>Imię</label><input type="text" id="pracownik-imie" required></div>
+                <div class="form-group"><label>Nazwisko</label><input type="text" id="pracownik-nazwisko" required></div>
+                <div class="form-group"><label>Stanowisko</label><input type="text" id="pracownik-stanowisko" value="Pracownik"></div>
+                <div class="form-group"><label>Stawka (zł/h)</label><input type="number" id="pracownik-stawka" value="25" min="0" step="0.01"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="zamknijModal('modal-pracownik')">Anuluj</button>
+                    <button type="submit" class="btn btn-primary">Dodaj</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="modal-wpis" class="modal">
+        <div class="modal-content">
+            <h3>Dodaj wpis czasu pracy</h3>
+            <p id="wpis-data-display" style="margin-bottom:1rem;color:var(--gray-700);"></p>
+            <form id="form-dodaj-wpis">
+                <div class="form-group"><label>Godziny</label><input type="number" id="wpis-godziny" value="8" min="0" max="24" step="0.5" required></div>
+                <div class="form-group"><label>Notatka</label><input type="text" id="wpis-notatka" placeholder="np. nadgodziny"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="zamknijModal('modal-wpis')">Anuluj</button>
+                    <button type="submit" class="btn btn-primary">Zapisz</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="modal-stawka" class="modal">
+        <div class="modal-content">
+            <h3>Zmień stawkę</h3>
+            <p id="stawka-pracownik-display" style="margin-bottom:1rem;color:var(--gray-700);"></p>
+            <form id="form-zmien-stawke">
+                <input type="hidden" id="stawka-pracownik-id">
+                <div class="form-group"><label>Nowa stawka (zł/h)</label><input type="number" id="nowa-stawka" value="25" min="0" step="0.01" required></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="zamknijModal('modal-stawka')">Anuluj</button>
+                    <button type="submit" class="btn btn-primary">Zapisz</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('token');
+        let uzytkownik = JSON.parse(localStorage.getItem('uzytkownik') || 'null');
+        let wybranyPracownik = null;
+        let aktualnyMiesiac = new Date().getMonth();
+        let aktualnyRok = new Date().getFullYear();
+        let wpisyPracownika = [];
+        let aktualnyRaport = null;
+        let listaPracownikow = [];
+        
+        if (token && uzytkownik) { pokazAplikacje(); }
+        
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const login = document.getElementById('login-input').value;
+            const haslo = document.getElementById('haslo-input').value;
+            try {
+                const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login, haslo }) });
+                const data = await res.json();
+                if (res.ok) {
+                    token = data.token;
+                    uzytkownik = data.uzytkownik;
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('uzytkownik', JSON.stringify(uzytkownik));
+                    pokazAplikacje();
+                } else { pokazBlad(data.error || 'Błąd logowania'); }
+            } catch (error) { pokazBlad('Błąd połączenia z serwerem'); }
+        });
+        
+        function pokazAplikacje() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'block';
+            document.getElementById('user-name').textContent = uzytkownik.nazwa;
+            document.getElementById('user-role').textContent = uzytkownik.rola === 'brygadzista' ? '👷 Brygadzista' : '📊 Księgowa';
+            if (uzytkownik.rola === 'brygadzista') {
+                document.getElementById('brygadzista-panel').style.display = 'block';
+                document.getElementById('ksiegowa-panel').style.display = 'none';
+                zaladujPracownikow();
+            } else {
+                document.getElementById('brygadzista-panel').style.display = 'none';
+                document.getElementById('ksiegowa-panel').style.display = 'block';
+                zaladujPracownikowDlaStawek();
+                zaladujLata();
+                document.getElementById('raport-miesiac').value = new Date().getMonth();
+            }
+        }
+        
+        function wyloguj() { localStorage.removeItem('token'); localStorage.removeItem('uzytkownik'); location.reload(); }
+        
+        async function apiCall(url, options = {}) {
+            const headers = { 'Content-Type': 'application/json', ...options.headers };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            const res = await fetch(url, { ...options, headers });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Błąd');
+            return data;
+        }
+        
+        async function zaladujPracownikow() {
+            try {
+                listaPracownikow = await apiCall('/api/pracownicy');
+                const list = document.getElementById('pracownicy-list');
+                if (listaPracownikow.length === 0) { list.innerHTML = '<p style="color:var(--gray-700);">Brak pracowników. Dodaj pierwszego.</p>'; return; }
+                list.innerHTML = '';
+                listaPracownikow.forEach((p, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'pracownik-card' + (wybranyPracownik && wybranyPracownik.id === p.id ? ' selected' : '');
+                    card.onclick = function() { wybierzPracownika(index); };
+                    card.innerHTML = '<h3>' + p.imie + ' ' + p.nazwisko + '</h3><p>' + (p.stanowisko || 'Pracownik') + '</p><p style="color:var(--primary);">' + (p.stawka || 25) + ' zł/h</p>';
+                    list.appendChild(card);
+                });
+            } catch (error) { pokazBlad('Błąd ładowania pracowników'); }
+        }
+        
+        function wybierzPracownika(index) {
+            const pracownik = listaPracownikow[index];
+            if (!pracownik) return;
+            wybranyPracownik = pracownik;
+            document.getElementById('wybrany-pracownik').textContent = pracownik.imie + ' ' + pracownik.nazwisko;
+            document.getElementById('kalendarz-section').style.display = 'block';
+            zaladujKalendarz();
+            zaladujPracownikow();
+        }
+        
+        async function zaladujKalendarz() {
+            const miesiace = ['Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec', 'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'];
+            document.getElementById('kalendarz-miesiac').textContent = miesiace[aktualnyMiesiac] + ' ' + aktualnyRok;
+            try {
+                const wszystkieWpisy = await apiCall('/api/wpisy/' + aktualnyRok + '/' + aktualnyMiesiac);
+                wpisyPracownika = wszystkieWpisy.filter(w => w.pracownikId === wybranyPracownik.id);
+                const grid = document.getElementById('kalendarz-grid');
+                const pierwszyDzien = new Date(aktualnyRok, aktualnyMiesiac, 1).getDay();
+                const dniWMiesiacu = new Date(aktualnyRok, aktualnyMiesiac + 1, 0).getDate();
+                const dniTygodnia = ['Nd', 'Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So'];
+                grid.innerHTML = dniTygodnia.map(d => '<div style="background:var(--gray-100);padding:0.5rem;text-align:center;font-weight:bold;">' + d + '</div>').join('');
+                for (let i = 0; i < pierwszyDzien; i++) { grid.innerHTML += '<div></div>'; }
+                for (let dzien = 1; dzien <= dniWMiesiacu; dzien++) {
+                    const data = aktualnyRok + '-' + String(aktualnyMiesiac + 1).padStart(2, '0') + '-' + String(dzien).padStart(2, '0');
+                    const wpis = wpisyPracownika.find(w => w.data === data);
+                    grid.innerHTML += '<div class="kalendarz-dzien' + (wpis ? ' wpis' : '') + '" onclick="otworzWpis(\'' + data + '\')"><div class="dzien-numer">' + dzien + '</div>' + (wpis ? '<div class="dzien-godziny">' + wpis.godziny + 'h</div>' : '') + '</div>';
+                }
+            } catch (error) { pokazBlad('Błąd ładowania kalendarza'); }
+        }
+        
+        function zmienMiesiac(kierunek) {
+            aktualnyMiesiac += kierunek;
+            if (aktualnyMiesiac > 11) { aktualnyMiesiac = 0; aktualnyRok++; }
+            else if (aktualnyMiesiac < 0) { aktualnyMiesiac = 11; aktualnyRok--; }
+            if (wybranyPracownik) zaladujKalendarz();
+        }
+        
+        let wybranaData = null;
+        
+        function otworzWpis(data) {
+            wybranaData = data;
+            const wpis = wpisyPracownika.find(w => w.data === data);
+            document.getElementById('wpis-data-display').textContent = 'Data: ' + data;
+            document.getElementById('wpis-godziny').value = wpis ? wpis.godziny : 8;
+            document.getElementById('wpis-notatka').value = wpis ? wpis.notatka : '';
+            document.getElementById('modal-wpis').classList.add('active');
+        }
+        
+        document.getElementById('form-dodaj-wpis').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const godziny = parseFloat(document.getElementById('wpis-godziny').value);
+            const notatka = document.getElementById('wpis-notatka').value;
+            const istniejacyWpis = wpisyPracownika.find(w => w.data === wybranaData);
+            try {
+                if (istniejacyWpis) {
+                    await apiCall('/api/wpisy/' + istniejacyWpis.id, { method: 'PUT', body: JSON.stringify({ godziny, notatka }) });
+                    pokazSukces('Wpis zaktualizowany');
+                } else {
+                    await apiCall('/api/wpisy', { method: 'POST', body: JSON.stringify({ pracownikId: wybranyPracownik.id, data: wybranaData, godziny, notatka }) });
+                    pokazSukces('Wpis dodany');
+                }
+                zamknijModal('modal-wpis');
+                zaladujKalendarz();
+            } catch (error) { pokazBlad('Błąd zapisywania wpisu'); }
+        });
+        
+        function pokazModalDodajPracownika() { document.getElementById('modal-pracownik').classList.add('active'); }
+        
+        document.getElementById('form-dodaj-pracownika').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const imie = document.getElementById('pracownik-imie').value;
+            const nazwisko = document.getElementById('pracownik-nazwisko').value;
+            const stanowisko = document.getElementById('pracownik-stanowisko').value;
+            const stawka = document.getElementById('pracownik-stawka').value;
+            try {
+                await apiCall('/api/pracownicy', { method: 'POST', body: JSON.stringify({ imie, nazwisko, stanowisko, stawka }) });
+                pokazSukces('Pracownik dodany');
+                zamknijModal('modal-pracownik');
+                e.target.reset();
+                zaladujPracownikow();
+            } catch (error) { pokazBlad('Błąd dodawania pracownika'); }
+        });
+        
+        function zaladujLata() {
+            const select = document.getElementById('raport-rok');
+            const rok = new Date().getFullYear();
+            select.innerHTML = '';
+            for (let i = rok; i >= rok - 5; i--) { select.innerHTML += '<option value="' + i + '">' + i + '</option>'; }
+        }
+        
+        async function pobierzRaport() {
+            const miesiac = parseInt(document.getElementById('raport-miesiac').value);
+            const rok = parseInt(document.getElementById('raport-rok').value);
+            try {
+                const raport = await apiCall('/api/raport/' + rok + '/' + miesiac);
+                aktualnyRaport = raport;
+                const statusDiv = document.getElementById('raport-status');
+                if (raport.zatwierdzenie && raport.zatwierdzenie.zatwierdzony) {
+                    statusDiv.innerHTML = '<span class="status-badge status-zatwierdzony">✓ Zatwierdzony przez ' + raport.zatwierdzenie.kto + '</span>';
+                    document.getElementById('zatwierdz-btn').style.display = 'none';
+                    document.getElementById('cofnij-btn').style.display = 'inline-block';
+                } else {
+                    statusDiv.innerHTML = '<span class="status-badge status-oczekujacy">Oczekuje na zatwierdzenie</span>';
+                    document.getElementById('zatwierdz-btn').style.display = 'inline-block';
+                    document.getElementById('cofnij-btn').style.display = 'none';
+                }
+                const tbody = document.getElementById('raport-tbody');
+                if (raport.pracownicy.length === 0) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Brak danych</td></tr>'; }
+                else { tbody.innerHTML = raport.pracownicy.map((p, i) => '<tr><td>' + (i+1) + '</td><td>' + p.imie + ' ' + p.nazwisko + '</td><td>' + p.stanowisko + '</td><td>' + p.godziny + '</td><td>' + p.stawka + ' zł</td><td>' + p.brutto.toFixed(2) + ' zł</td><td>' + p.skladki.toFixed(2) + ' zł</td><td>' + p.netto.toFixed(2) + ' zł</td></tr>').join(''); }
+                document.getElementById('suma-box').style.display = 'block';
+                document.getElementById('suma-godzin').textContent = raport.suma.godzin;
+                document.getElementById('suma-brutto').textContent = raport.suma.brutto.toFixed(2) + ' zł';
+                document.getElementById('suma-skladki').textContent = raport.suma.skladki.toFixed(2) + ' zł';
+                document.getElementById('suma-netto').textContent = raport.suma.netto.toFixed(2) + ' zł';
+            } catch (error) { pokazBlad('Błąd pobierania raportu'); }
+        }
+        
+        async function zatwierdzMiesiac() {
+            const miesiac = parseInt(document.getElementById('raport-miesiac').value);
+            const rok = parseInt(document.getElementById('raport-rok').value);
+            if (!confirm('Czy na pewno chcesz zatwierdzić miesiąc?')) return;
+            try {
+                await apiCall('/api/zatwierdzenie/' + rok + '/' + miesiac, { method: 'POST' });
+                pokazSukces('Miesiąc zatwierdzony');
+                pobierzRaport();
+            } catch (error) { pokazBlad('Błąd zatwierdzania'); }
+        }
+        
+        async function cofnijZatwierdzenie() {
+            const miesiac = parseInt(document.getElementById('raport-miesiac').value);
+            const rok = parseInt(document.getElementById('raport-rok').value);
+            if (!confirm('Czy cofnąć zatwierdzenie?')) return;
+            try {
+                await apiCall('/api/zatwierdzenie/' + rok + '/' + miesiac, { method: 'DELETE' });
+                pokazSukces('Zatwierdzenie cofnięte');
+                pobierzRaport();
+            } catch (error) { pokazBlad('Błąd'); }
+        }
+        
+        function eksportCSV() {
+            const miesiac = document.getElementById('raport-miesiac').value;
+            const rok = document.getElementById('raport-rok').value;
+            window.open('/api/eksport/csv/' + rok + '/' + miesiac, '_blank');
+        }
+        
+        function eksportExcel() {
+            if (!aktualnyRaport) { pokazBlad('Najpierw pobierz raport'); return; }
+            let html = '<html><head><meta charset="utf-8"></head><body><h1>Lista płac ' + aktualnyRaport.miesiac + '/' + aktualnyRaport.rok + '</h1><table border="1"><tr><th>Pracownik</th><th>Godziny</th><th>Stawka</th><th>BRUTTO</th><th>NETTO</th></tr>';
+            aktualnyRaport.pracownicy.forEach(p => { html += '<tr><td>' + p.imie + ' ' + p.nazwisko + '</td><td>' + p.godziny + '</td><td>' + p.stawka + '</td><td>' + p.brutto.toFixed(2) + '</td><td>' + p.netto.toFixed(2) + '</td></tr>'; });
+            html += '</table></body></html>';
+            const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'lista_plac_' + aktualnyRaport.miesiac + '_' + aktualnyRaport.rok + '.xls';
+            a.click();
+        }
+        
+        async function zaladujPracownikowDlaStawek() {
+            try {
+                const pracownicy = await apiCall('/api/pracownicy');
+                const tbody = document.getElementById('stawki-tbody');
+                if (pracownicy.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Brak pracowników</td></tr>'; return; }
+                tbody.innerHTML = pracownicy.map(p => '<tr><td>' + p.imie + ' ' + p.nazwisko + '</td><td>' + p.stanowisko + '</td><td>' + (p.stawka || 25) + ' zł/h</td><td><button class="btn" style="padding:0.25rem 0.5rem;font-size:0.875rem;" onclick="pokazModalStawka(\'' + p.id + '\',\'' + p.imie + ' ' + p.nazwisko + '\',' + (p.stawka || 25) + ')">Zmień</button></td></tr>').join('');
+            } catch (error) { pokazBlad('Błąd ładowania stawek'); }
+        }
+        
+        function pokazModalStawka(id, nazwa, stawka) {
+            document.getElementById('stawka-pracownik-id').value = id;
+            document.getElementById('stawka-pracownik-display').textContent = 'Pracownik: ' + nazwa;
+            document.getElementById('nowa-stawka').value = stawka;
+            document.getElementById('modal-stawka').classList.add('active');
+        }
+        
+        document.getElementById('form-zmien-stawke').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('stawka-pracownik-id').value;
+            const stawka = document.getElementById('nowa-stawka').value;
+            try {
+                await apiCall('/api/pracownicy/' + id + '/stawka', { method: 'PUT', body: JSON.stringify({ stawka }) });
+                pokazSukces('Stawka zaktualizowana');
+                zamknijModal('modal-stawka');
+                zaladujPracownikowDlaStawek();
+            } catch (error) { pokazBlad('Błąd aktualizacji stawki'); }
+        });
+        
+        function zamknijModal(id) { document.getElementById(id).classList.remove('active'); }
+        function pokazSukces(msg) { pokazNotyfikacje(msg, 'success'); }
+        function pokazBlad(msg) { pokazNotyfikacje(msg, 'error'); }
+        function pokazNotyfikacje(msg, type) {
+            const div = document.createElement('div');
+            div.className = 'notification ' + type;
+            div.textContent = msg;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+        
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('active'); });
+        });
+    </script>
+</body>
+</html>
